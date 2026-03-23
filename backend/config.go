@@ -20,12 +20,15 @@ var DefaultConfig = AppConfig{
 	HouseInfoURL:    "https://fdc.zjj.sz.gov.cn/szfdcscjy/projectPublish/getHouseInfoListToPublicity",
 }
 
-// RequestConfig 默认爬取参数（定时任务使用，API 请求时会动态覆盖）
-var RequestConfig = struct {
+// RequestConfigType 爬取参数类型
+type RequestConfigType struct {
 	ProjectKeyword string
 	BuildingName   string
 	HouseType      string
-}{
+}
+
+// RequestConfig 默认爬取参数（定时任务使用，API 请求时会动态覆盖）
+var RequestConfig = RequestConfigType{
 	ProjectKeyword: "乐宸",
 	BuildingName:   "1栋",
 	HouseType:      "三房",

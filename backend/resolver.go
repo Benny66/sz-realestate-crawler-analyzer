@@ -9,11 +9,16 @@ import (
 
 // ResolveProjectParams 通过关键字自动搜索并解析目标楼盘的 ID 参数
 func ResolveProjectParams(keyword string) (*ResolvedProjectParams, error) {
-	return ResolveProjectParamsWithZone(keyword, "")
+	return ResolveProjectParamsWithZoneAndConfig(keyword, "", RequestConfig)
 }
 
 // ResolveProjectParamsWithZone 支持按区域筛选楼盘
 func ResolveProjectParamsWithZone(keyword, zone string) (*ResolvedProjectParams, error) {
+	return ResolveProjectParamsWithZoneAndConfig(keyword, zone, RequestConfig)
+}
+
+// ResolveProjectParamsWithZoneAndConfig 支持按区域和配置筛选楼盘
+func ResolveProjectParamsWithZoneAndConfig(keyword, zone string, config RequestConfigType) (*ResolvedProjectParams, error) {
 	fmt.Printf("正在搜索楼盘关键字: 「%s」 区域: 「%s」...\n", keyword, zone)
 
 	searchResp, err := postJSON(DefaultConfig.ProjectListURL, ProjectSearchRequest{
@@ -54,7 +59,7 @@ func ResolveProjectParamsWithZone(keyword, zone string) (*ResolvedProjectParams,
 			fmt.Printf("匹配到楼盘: 「%s」 ysProjectId=%d preSellId=%d\n",
 				params.ProjectName, params.YsProjectId, params.PreSellId)
 
-			fybId, err := ResolveFybId(ysProjectId, preSellId, RequestConfig.BuildingName)
+			fybId, err := ResolveFybId(ysProjectId, preSellId, config.BuildingName)
 			if err != nil {
 				return nil, fmt.Errorf("获取 fybId 失败: %v", err)
 			}

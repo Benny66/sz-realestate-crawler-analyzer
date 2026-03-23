@@ -436,17 +436,25 @@ func doAnalyze(req AnalyzeRequest) (*AnalyzeResponse, error) {
 		}
 	} else {
 		// 通过关键字自动解析
-		oldBuilding := RequestConfig.BuildingName
-		oldType := RequestConfig.HouseType
+		// 创建临时配置，避免修改全局默认值
+		tempConfig := RequestConfig
 		if req.BuildingName != "" {
-			RequestConfig.BuildingName = req.BuildingName
+			tempConfig.BuildingName = req.BuildingName
 		}
+		// 只有当明确指定户型时才使用，否则分析全部户型
 		if req.HouseType != "" {
-			RequestConfig.HouseType = req.HouseType
+			tempConfig.HouseType = req.HouseType
+		} else {
+			tempConfig.HouseType = "" // 空字符串表示不限户型
 		}
-		params, err = ResolveProjectParamsWithZone(req.Keyword, req.Zone)
-		RequestConfig.BuildingName = oldBuilding
-		RequestConfig.HouseType = oldType
+
+		// 保存原始配置并临时替换
+		oldConfig := RequestConfig
+		RequestConfig = tempConfig
+		params, err = ResolveProjectParamsWithZoneAndConfig(req.Keyword, req.Zone, tempConfig)
+		// 恢复原始配置
+		RequestConfig = oldConfig
+
 		if err != nil {
 			return nil, fmt.Errorf("解析楼盘参数失败: %v", err)
 		}
@@ -458,8 +466,10 @@ func doAnalyze(req AnalyzeRequest) (*AnalyzeResponse, error) {
 		buildingName = RequestConfig.BuildingName
 	}
 	houseType := req.HouseType
+	// 如果前端没有指定户型，就分析全部户型（空字符串）
+	// 不要使用默认值，因为默认值可能是特定户型
 	if houseType == "" {
-		houseType = RequestConfig.HouseType
+		houseType = "" // 空字符串表示不限户型
 	}
 
 	if entry, ok := GetCache(params.ProjectName, buildingName, houseType); ok {
