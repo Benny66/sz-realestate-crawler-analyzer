@@ -1,0 +1,40 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temp / logs
+*.log
+*.tmp
+*.temp
+
+# Backend artifacts
+/backend/*.exe
+/backend/*.exe~
+/backend/*.out
+/backend/*.test
+/backend/*.dll
+/backend/*.so
+/backend/*.dylib
+/backend/bin/
+/backend/dist/
+/backend/coverage.out
+/backend/*.coverprofile
+/backend/history.json
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
+
+# Frontend artifacts
+/frontend/node_modules/
+/frontend/dist/
+/frontend/dist-ssr/
+/frontend/coverage/
+/frontend/.vite/
+/frontend/*.tsbuildinfo
+/frontend/.env
+/frontend/.env.*
+!/frontend/.env.example

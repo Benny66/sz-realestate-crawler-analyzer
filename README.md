@@ -1,186 +1,277 @@
-# 深圳房产信息爬取分析工具
+# 深圳房产信息智能分析平台
 
-## 项目结构
+基于 **Go + Vue 3 + Element Plus + ECharts** 的深圳房地产信息平台智能分析系统。
 
-```
-sz-realestate-crawler-analyzer/
-├── main.go       # 程序入口、爬取主流程、定时调度
-├── config.go     # 所有配置（URL、请求头、Cookie、业务参数）
-├── types.go      # 所有结构体定义
-├── http.go       # HTTP 请求工具函数
-├── cookie.go     # Cookie 自动获取与刷新逻辑
-├── analyzer.go   # 数据分析逻辑与报告打印
-├── resolver.go   # 楼盘参数自动解析逻辑
-└── README.md     # 项目说明文档
-```
-
-## 快速启动
-
-### 环境要求
-- Go 1.21 及以上版本
-
-### 1. 克隆项目
-```bash
-git clone https://github.com/your-username/sz-realestate-crawler-analyzer.git
-cd sz-realestate-crawler-analyzer
-```
-
-### 2. 修改配置（可选）
-打开 `config.go`，按需修改以下参数：
-```go
-var RequestConfig = struct {
-    ProjectKeyword string // 楼盘搜索关键字，默认"乐宸"
-    BuildingName   string // 目标楼栋名称，默认"1栋"
-    HouseType      string // 户型类型筛选，默认"三房"
-}{
-    ProjectKeyword: "乐宸",
-    BuildingName:   "1栋",
-    HouseType:      "三房",
-}
-```
-
-### 3. 运行项目
-```bash
-go run .
-```
-
-### 4. 查看输出
-程序启动后会自动执行以下流程：
-1. 自动获取 Cookie（失败则降级使用 `config.go` 中的静态 Cookie）
-2. 通过关键字搜索匹配目标楼盘，自动获取楼盘 ID 参数
-3. 爬取房源数据并在终端打印分析报告
-
-输出示例：
-```
-深圳房产信息爬取脚本启动！
-爬取间隔: 1800 秒
-==============================
-正在自动获取 Cookie...
-Cookie 自动获取成功，共 5 个
-
-开始爬取房源信息 - 2025-01-01 10:00:00
-正在搜索楼盘关键字: 「乐宸」...
-匹配到楼盘: 「乐宸花园」 ysProjectId=36386 preSellId=141990
-匹配到楼栋: 「1栋」 fybId=55674
-成功获取 20 个楼层的房源数据
-
-========== 房源数据分析报告 ==========
-【一、价格类核心指标】
-  ...
-【五、销售状态统计】
-  ...
-======================================
-```
-
-### 5. Cookie 过期处理
-若程序输出接口返回异常或数据为空，说明 Cookie 已过期，需手动更新 `config.go` 中的 `Cookies` 字段：
-1. 打开浏览器访问 `https://fdc.zjj.sz.gov.cn/szfdcscjy/`
-2. 按 F12 打开开发者工具 → Network → 任意请求 → 复制 `Cookie` 请求头的值
-3. 替换 `config.go` 中的 `Cookies` 变量值
+该项目从深圳市住房和建设局公开平台抓取预售房源信息，对房源价格、楼层、销售状态、面积、性价比等指标进行量化分析，并通过前端可视化界面展示。
 
 ---
 
-## 启动流程
+## 项目特性
 
+- 支持 **楼盘关键字搜索**
+- 支持 **楼栋联动选择**
+- 支持 **户型筛选**
+- 支持 **房源价格分析**
+- 支持 **销售状态统计**
+- 支持 **楼层热力图展示**
+- 支持 **历史趋势记录**
+- 支持 **多楼盘对比分析**
+- 支持 **后端缓存与定时刷新**
+
+---
+
+## 项目结构
+
+```text
+.
+├── backend/                        # Go 后端服务
+│   ├── main.go                     # 启动 HTTP 服务、定时刷新任务
+│   ├── api.go                      # REST API
+│   ├── cache.go                    # 缓存与历史记录持久化
+│   ├── config.go                   # 全局配置
+│   ├── types.go                    # 数据结构定义
+│   ├── http.go                     # 请求工具
+│   ├── cookie.go                   # Cookie 自动获取与刷新
+│   ├── resolver.go                 # 楼盘/楼栋参数解析
+│   ├── analyzer.go                 # 数据分析逻辑
+│   ├── go.mod
+│   └── .gitignore
+│
+├── frontend/                       # Vue 3 前端
+│   ├── src/
+│   │   ├── api/                    # 前端接口封装
+│   │   ├── components/             # 搜索、图表、表格、历史、对比组件
+│   │   ├── types/                  # TypeScript 类型定义
+│   │   ├── views/
+│   │   │   └── Dashboard.vue       # 主页面
+│   │   ├── App.vue
+│   │   ├── main.ts
+│   │   └── style.css
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── .gitignore
+│
+├── README.md                       # 根目录项目说明
+└── lechenginfo_fullstack_memory.md # 根目录项目记忆文件
 ```
-启动 main.go
- └─ initCookieClient()                      # 自动获取 Cookie
-     └─ GET https://fdc.zjj.sz.gov.cn/szfdcscjy/
-         └─ 服务端下发 BIGipServerPool-* / WSESSIONID 等 Cookie
-             └─ 存入 globalCookieJar
-                 └─ 每次请求前 ensureCookieValid() 检查是否过期
-                     └─ 过期则自动重新访问入口页刷新
- └─ scheduleTask()                          # 启动定时任务
-     └─ crawlHouseInfo()                    # 立即执行一次爬取
-         ├─ ResolveProjectParams()          # 自动解析楼盘参数
-         │   ├─ postJSON()                  # 搜索楼盘（关键字"乐宸"）
-         │   │   └─ getYsfYsPublicity       # 匹配 ysProjectId / preSellId
-         │   └─ ResolveFybId()              # 获取目标楼栋 fybId
-         │       └─ postForm()              # 匹配楼栋名称（"1栋"）
-         │           └─ getBuildingNameListToPublicity
-         ├─ postForm()                      # 请求楼栋字典接口
-         │   └─ getBuildingDictToPublicity  # 获取可售楼层、单元分区等信息
-         ├─ postJSON()                      # 请求房源列表接口
-         │   └─ getHouseInfoListToPublicity # 获取房源详情及价格数据
-         ├─ Analyze()                       # 数据量化分析（价格/面积/楼层）
-         ├─ AnalyzeSaleStatus()             # 销售状态统计（在售/已售/比例）
-         └─ PrintReport()                   # 打印分析报告
-     └─ ticker 每 1800 秒循环执行 crawlHouseInfo()
+
+---
+
+## 技术栈
+
+### 后端
+- Go 1.23.6
+- net/http
+- encoding/json
+- 原生文件存储（history.json）
+
+### 前端
+- Vue 3
+- TypeScript
+- Vite
+- Element Plus
+- ECharts
+- Axios
+
+---
+
+## 核心能力
+
+### 1. 智能搜索
+前端输入楼盘关键字后：
+- 调用后端搜索楼盘接口
+- 自动展示候选楼盘
+- 选择楼盘后再拉取楼栋列表
+- 选择楼栋与户型后执行分析
+
+### 2. 数据分析
+后端对抓取到的房源数据进行分析，包括：
+- 最低/最高/中位挂牌单价
+- 最低/最高/平均总价
+- 建筑面积 / 套内面积 / 拓展面积
+- 得房率
+- 低中高楼层分布
+- 销售状态统计
+- 性价比衍生指标
+
+### 3. 历史趋势
+每次分析完成后，会将结果写入历史记录文件：
+- 默认持久化到 `backend/history.json`
+- 前端可展示价格趋势图
+- 支持查看与删除历史记录
+
+### 4. 多楼盘对比
+支持最多 5 个楼盘同时对比，展示：
+- 综合雷达图
+- 价格柱状图
+- 销售状态对比图
+- 指标数据表
+
+### 5. 缓存与定时刷新
+- 后端分析结果会缓存 30 分钟
+- 默认定时刷新默认楼盘数据
+- 可手动清除缓存
+
+---
+
+## 后端 API
+
+### 楼盘搜索
+```http
+GET /api/search?keyword=乐宸&pageIndex=1&pageSize=12&zone=
 ```
 
-## 分析指标说明
+### 获取楼栋列表
+```http
+GET /api/buildings?ysProjectId=xxx&preSellId=xxx
+```
 
-### 一、价格类核心指标
-| 指标 | 说明 |
-|------|------|
-| 最低/最高挂牌单价 | 所有**在售**房源 `askpriceeachB` 字段的最小/最大值（元/㎡） |
-| 挂牌单价中位数 | 所有**在售**房源单价排序后取中间值（元/㎡） |
-| 备案单价区间 | `recordedPricePerUnitInside` 字段的最小/最大值，按套内面积计算，通常高于挂牌单价 |
-| 最低/最高总价 | 所有**在售**房源 `askpricetotalB` 字段的最小/最大值（元） |
-| 总价均值 | 所有**在售**房源总价求和后取平均（元） |
-| 总价区间跨度 | 最高总价 - 最低总价，反映同楼栋价格差异（元） |
+### 执行分析
+```http
+POST /api/analyze
+Content-Type: application/json
+```
 
-### 二、面积类核心指标
-| 指标 | 说明 |
-|------|------|
-| 产权建筑面积 | `ysbuildingarea` 字段，即合同面积（㎡） |
-| 赠送/拓展面积 | `ysexpandarea` 字段，不计入产权但可实际使用（㎡） |
-| 套内面积 | `ysinsidearea` 字段，= 产权建筑面积 - 公摊面积（㎡） |
-| 实际使用面积 | = 产权建筑面积 + 拓展面积（㎡） |
-| 得房率 | = 套内面积 / 产权建筑面积 × 100（%） |
+请求体示例：
+```json
+{
+  "keyword": "乐宸",
+  "buildingName": "1栋",
+  "houseType": "三房"
+}
+```
 
-### 三、房源供应与楼层分布
-> 仅统计 `lastStatusName` 为**期房待售**的在售房源
+### 多楼盘对比
+```http
+POST /api/compare
+Content-Type: application/json
+```
 
-| 指标 | 说明 |
-|------|------|
-| 总在售套数 | 挂牌价大于 0 的房源数量之和 |
-| 在售楼层范围 | 有在售房源的最低楼层 ~ 最高楼层 |
-| 低楼层(2-9楼) | 该区间在售套数及占比 |
-| 中楼层(10-19楼) | 该区间在售套数及占比 |
-| 高楼层(20楼+) | 该区间在售套数及占比 |
-| 单楼层最多/最少套数 | 反映在售房源的楼层分布均匀程度 |
+### 获取历史记录
+```http
+GET /api/history
+```
 
-### 四、性价比衍生指标
-| 指标 | 计算公式 | 说明 |
-|------|----------|------|
-| 单价/拓展面积比 | 挂牌单价均值 / 拓展面积 | 每 1㎡ 拓展面积对应的单价成本，数值越低性价比越高 |
-| 总价/实际使用面积比 | 总价均值 / 实际使用面积 | 反映实际使用面积的真实购房成本（元/㎡） |
-| 楼层价格梯度 | (最高单价 - 最低单价) / 最低单价 × 100 | 高低楼层单价涨幅（%），涨幅越低高楼层性价比越高 |
+### 删除历史记录
+```http
+DELETE /api/history?id=记录ID
+```
 
-### 五、销售状态统计
-| 指标 | 说明 |
-|------|------|
-| 总套数 | 接口返回的全部房源数量（含在售、已售） |
-| 在售套数 | `lastStatusName` 为"期房待售"的房源数量 |
-| 已售套数 | "已签认购书"、"已录入合同"等非待售状态的房源数量 |
-| 售出比例 | 已售套数 / 总套数 × 100（%） |
-| 各状态明细 | 按套数降序列出每种状态的数量及占比 |
+### 清除缓存
+```http
+POST /api/cache/clear
+```
 
-## Cookie 说明
+---
 
-Cookie 由 `cookie.go` 自动获取和管理，每 **30 分钟**自动刷新一次。
+## 启动方式
 
-| Cookie 字段 | 来源 | 说明 |
-|-------------|------|------|
-| `WSESSIONID-SZFDC-SCJY` | 服务端 Session | 若需登录才能获取，则需手动更新 `config.go` 中的 `Cookies` |
-| `BIGipServerPool-*` | 负载均衡 | 访问入口页时服务器自动下发 |
-| `Hm_lvt_*` | 百度统计 | 访问入口页时自动下发 |
-| `_trs_uv` | 访客追踪 | 访问入口页时自动下发 |
+## 1. 启动后端
 
-> ⚠️ 若自动获取 Cookie 失败，程序会自动降级使用 `config.go` 中配置的静态 Cookie。
+```powershell
+cd backend
+go run .
+```
 
-## 配置说明
+后端默认监听：
 
-所有可调整参数均在 `config.go` 中：
+```text
+http://localhost:8080
+```
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `Interval` | `1800` | 定时爬取间隔（秒） |
-| `ProjectListURL` | - | 楼盘列表搜索接口地址 |
-| `BuildingNameURL` | - | 楼栋名称列表接口地址 |
-| `BuildingDictURL` | - | 楼栋字典接口地址 |
-| `HouseInfoURL` | - | 房源列表接口地址 |
-| `ProjectKeyword` | `乐宸` | 楼盘搜索关键字，切换楼盘时修改此处 |
-| `BuildingName` | `1栋` | 目标楼栋名称，用于匹配 fybId |
-| `HouseType` | `三房` | 户型类型筛选，空字符串表示不限户型 |
+---
+
+## 2. 启动前端
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+前端默认地址通常为：
+
+```text
+http://127.0.0.1:5173
+```
+
+如果端口被占用，Vite 会自动切换到其它端口，比如 `5174`。
+
+---
+
+## 默认演示配置
+
+后端默认配置：
+- 楼盘关键字：`乐宸`
+- 楼栋：`1栋`
+- 户型：`三房`
+
+对应配置文件：
+
+```text
+backend/config.go
+```
+
+---
+
+## 重要说明
+
+### Cookie 机制
+由于目标站点存在会话限制，后端会：
+- 启动时自动访问入口页获取 Cookie
+- 每 30 分钟自动刷新 Cookie
+- 如果自动获取失败，则降级使用静态 Cookie
+
+### 历史文件
+历史分析记录默认保存在：
+
+```text
+backend/history.json
+```
+
+该文件建议加入 `.gitignore`，避免把运行时数据提交到 GitHub。
+
+### Windows 环境说明
+你当前是 Windows 环境，建议使用 PowerShell 启动：
+
+```powershell
+cd backend
+go run .
+```
+
+```powershell
+cd frontend
+npm run dev
+```
+
+---
+
+## 后续可扩展方向
+
+- 支持区域筛选
+- 支持更多户型维度分析
+- 支持收藏楼盘
+- 支持导出 Excel / CSV
+- 支持房源价格变化预警
+- 支持登录后保存个人分析记录
+- 支持部署到云服务器
+
+---
+
+## 适用场景
+
+- 深圳新房预售房源观察
+- 楼盘横向对比
+- 购房数据辅助分析
+- 销售进度趋势跟踪
+- 房产信息可视化展示
+
+---
+
+如果你后面还要继续扩展，我建议下一步可以继续做：
+
+1. 登录页与用户体系
+2. 导出报表
+3. 收藏楼盘与订阅提醒
+4. Docker 部署
+5. Nginx 反向代理上线
