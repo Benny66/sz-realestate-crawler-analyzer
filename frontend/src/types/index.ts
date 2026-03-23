@@ -88,6 +88,8 @@ export interface ResolvedProjectParams {
   preSellId: number
   fybId: number
   projectName: string
+  buildingName: string  // 实际使用的楼栋名称
+  autoSelected: boolean  // 是否自动选择了楼栋
 }
 
 // ---- API 请求/响应 ----

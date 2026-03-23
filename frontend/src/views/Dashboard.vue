@@ -33,6 +33,7 @@
       <!-- 左侧搜索面板 -->
       <el-aside width="280px" class="side-panel">
         <SearchPanel
+          ref="searchPanelRef"
           :loading="analyzing"
           :compare-loading="comparing"
           :compare-list="compareList"
@@ -200,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import {
   House,
   OfficeBuilding,
@@ -220,6 +221,9 @@ import HistoryPanel from '@/components/HistoryPanel.vue'
 import CompareChart from '@/components/CompareChart.vue'
 import { analyzeProject, compareProjects, clearCache, buildExportCSVUrl, addFavorite, getFavorites, deleteFavorite, updateFavorite } from '@/api'
 import type { AnalyzeRequest, AnalyzeResponse, CompareResponse, FavoriteItem } from '@/types'
+
+// 搜索面板引用
+const searchPanelRef = ref<InstanceType<typeof SearchPanel>>()
 
 const result = ref<AnalyzeResponse | null>(null)
 const analyzing = ref(false)
@@ -242,6 +246,13 @@ async function onAnalyze(req: AnalyzeRequest) {
   try {
     result.value = await analyzeProject(req)
     lastUpdated.value = result.value.updatedAt
+    
+    // 如果后端自动选择了楼栋，更新搜索面板的楼栋显示
+    if (result.value.params.autoSelected && result.value.params.buildingName) {
+      await nextTick()
+      searchPanelRef.value?.updateBuildingName(result.value.params.buildingName)
+    }
+    
     ElMessage.success(`分析完成：${result.value.params.projectName}`)
   } catch {
     // 错误已在 api/index.ts 拦截器中处理

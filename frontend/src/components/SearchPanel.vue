@@ -212,6 +212,13 @@ function onAnalyze() {
   emit('analyze', buildRequest())
 }
 
+// 当分析完成后，如果后端自动选择了楼栋，更新前端显示
+defineExpose({
+  updateBuildingName(name: string) {
+    form.buildingName = name
+  }
+})
+
 function onAddToCompare() {
   if (!form.keyword) return
   emit('addToCompare', buildRequest())

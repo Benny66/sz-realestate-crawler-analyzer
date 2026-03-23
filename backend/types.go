@@ -133,10 +133,12 @@ type ProjectSearchResponse struct {
 
 // ResolvedProjectParams 从搜索结果中解析出的目标楼盘参数
 type ResolvedProjectParams struct {
-	YsProjectId int    `json:"ysProjectId"`
-	PreSellId   int    `json:"preSellId"`
-	FybId       int    `json:"fybId"`
-	ProjectName string `json:"projectName"`
+	YsProjectId     int    `json:"ysProjectId"`
+	PreSellId       int    `json:"preSellId"`
+	FybId           int    `json:"fybId"`
+	ProjectName     string `json:"projectName"`
+	BuildingName    string `json:"buildingName"`  // 实际使用的楼栋名称
+	AutoSelected    bool   `json:"autoSelected"`  // 是否自动选择了楼栋
 }
 
 // SaleStatusStats 销售状态统计
