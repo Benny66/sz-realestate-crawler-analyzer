@@ -28,6 +28,23 @@
         </el-autocomplete>
       </el-form-item>
 
+      <!-- 区域选择 -->
+      <el-form-item label="区域">
+        <el-select v-model="form.zone" placeholder="不限区域" clearable style="width: 100%">
+          <el-option label="不限" value="" />
+          <el-option label="福田" value="福田" />
+          <el-option label="罗湖" value="罗湖" />
+          <el-option label="南山" value="南山" />
+          <el-option label="宝安" value="宝安" />
+          <el-option label="龙岗" value="龙岗" />
+          <el-option label="龙华" value="龙华" />
+          <el-option label="坪山" value="坪山" />
+          <el-option label="光明" value="光明" />
+          <el-option label="盐田" value="盐田" />
+          <el-option label="大鹏" value="大鹏" />
+        </el-select>
+      </el-form-item>
+
       <!-- 楼栋选择 -->
       <el-form-item label="楼栋">
         <el-select
@@ -131,6 +148,7 @@ const emit = defineEmits<{
 
 const form = reactive({
   keyword: '',
+  zone: '',
   buildingName: '',
   houseType: '',
 })
@@ -148,7 +166,7 @@ async function fetchSuggestions(
     return
   }
   try {
-    const res = await searchProjects(query)
+    const res = await searchProjects(query, 1, 12, form.zone)
     cb(res.projects.map((p) => ({ ...p, value: p.project })))
   } catch {
     cb([])
@@ -183,6 +201,7 @@ function buildRequest(): AnalyzeRequest {
     keyword: form.keyword,
     buildingName: form.buildingName,
     houseType: form.houseType,
+    zone: form.zone,
     ysProjectId: selectedProject.value ? Number(selectedProject.value.sypId) : 0,
     preSellId: selectedProject.value ? Number(selectedProject.value.id) : 0,
   }

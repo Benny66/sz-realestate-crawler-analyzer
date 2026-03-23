@@ -9,14 +9,19 @@ import (
 
 // ResolveProjectParams 通过关键字自动搜索并解析目标楼盘的 ID 参数
 func ResolveProjectParams(keyword string) (*ResolvedProjectParams, error) {
-	fmt.Printf("正在搜索楼盘关键字: 「%s」...\n", keyword)
+	return ResolveProjectParamsWithZone(keyword, "")
+}
+
+// ResolveProjectParamsWithZone 支持按区域筛选楼盘
+func ResolveProjectParamsWithZone(keyword, zone string) (*ResolvedProjectParams, error) {
+	fmt.Printf("正在搜索楼盘关键字: 「%s」 区域: 「%s」...\n", keyword, zone)
 
 	searchResp, err := postJSON(DefaultConfig.ProjectListURL, ProjectSearchRequest{
 		Project:   keyword,
 		PageIndex: 1,
 		PageSize:  12,
 		Total:     0,
-		Zone:      "",
+		Zone:      zone,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("搜索楼盘失败: %v", err)
@@ -58,6 +63,9 @@ func ResolveProjectParams(keyword string) (*ResolvedProjectParams, error) {
 		}
 	}
 
+	if zone != "" {
+		return nil, fmt.Errorf("未找到包含关键字「%s」且区域为「%s」的楼盘", keyword, zone)
+	}
 	return nil, fmt.Errorf("未找到包含关键字「%s」的楼盘", keyword)
 }
 

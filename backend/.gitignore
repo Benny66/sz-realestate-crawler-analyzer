@@ -1,5 +1,5 @@
 # Go build artifacts
-*.exe
+*.exe 
 *.exe~
 *.dll
 *.so
@@ -15,6 +15,7 @@ coverage.out
 
 # Runtime data
 history.json
+favorites.json
 *.pid
 *.log
 

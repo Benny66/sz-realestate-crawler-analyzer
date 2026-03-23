@@ -8,6 +8,9 @@
         <el-tag type="info" size="small" effect="dark">深圳住建局数据</el-tag>
       </div>
       <div class="header-right">
+        <el-button size="small" @click="onViewFavorites">
+          <el-icon><Star /></el-icon> 收藏夹
+        </el-button>
         <el-tooltip content="清除缓存，强制重新爬取">
           <el-button size="small" @click="onClearCache" :loading="cacheClearing">
             <el-icon><RefreshRight /></el-icon> 清除缓存
@@ -68,12 +71,31 @@
               <el-icon><OfficeBuilding /></el-icon>
               {{ result.params.projectName }}
               <el-tag size="small">{{ currentReq?.buildingName }}</el-tag>
+              <el-tag v-if="currentReq?.zone" size="small" type="warning">{{ currentReq?.zone }}</el-tag>
               <el-tag size="small" type="success">{{ currentReq?.houseType || '全部户型' }}</el-tag>
             </div>
-            <div class="result-meta">
-              数据更新时间: {{ result.updatedAt }}
+            <div class="result-meta result-actions">
+              <el-button size="small" type="primary" plain @click="onExportCSV">导出 CSV</el-button>
+              <el-button size="small" type="warning" plain @click="onAddFavorite">加入收藏</el-button>
+              <span>数据更新时间: {{ result.updatedAt }}</span>
             </div>
           </div>
+
+          <!-- 价格/销售预警 -->
+          <el-row :gutter="12" style="margin-bottom: 16px">
+            <el-col :span="24">
+              <el-alert
+                v-for="(alert, idx) in result.alerts"
+                :key="idx"
+                :title="alert.title"
+                :description="alert.message"
+                :type="alert.level"
+                show-icon
+                :closable="false"
+                style="margin-bottom: 8px"
+              />
+            </el-col>
+          </el-row>
 
           <!-- 核心指标卡片 -->
           <MetricCards :analysis="result.analysis" style="margin-bottom: 16px" />
@@ -107,6 +129,52 @@
           <HistoryPanel />
         </div>
 
+        <!-- 收藏夹 -->
+        <el-dialog v-model="showFavorites" title="我的收藏楼盘" width="900px">
+          <el-table :data="favorites" border size="small">
+            <el-table-column prop="projectName" label="楼盘" />
+            <el-table-column prop="buildingName" label="楼栋" width="80" />
+            <el-table-column prop="zone" label="区域" width="80" />
+            <el-table-column prop="houseType" label="户型" width="80" />
+            <el-table-column label="推送设置" width="200" align="center">
+              <template #default="{ row }">
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                  <el-switch
+                    v-model="row.enablePush"
+                    size="small"
+                    @change="onTogglePush(row)"
+                  />
+                  <div style="display: flex; gap: 8px;">
+                    <el-tooltip content="价格变化提醒">
+                      <el-switch
+                        v-model="row.priceAlert"
+                        size="small"
+                        :disabled="!row.enablePush"
+                        @change="onUpdateFavorite(row)"
+                      />
+                    </el-tooltip>
+                    <el-tooltip content="销售状态提醒">
+                      <el-switch
+                        v-model="row.saleAlert"
+                        size="small"
+                        :disabled="!row.enablePush"
+                        @change="onUpdateFavorite(row)"
+                      />
+                    </el-tooltip>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="收藏时间" width="160" />
+            <el-table-column label="操作" width="120" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="onAnalyze({ keyword: row.projectName, buildingName: row.buildingName, houseType: row.houseType, zone: row.zone })">分析</el-button>
+                <el-button link type="danger" @click="onDeleteFavorite(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-dialog>
+
         <!-- 多楼盘对比面板 -->
         <el-dialog
           v-model="showCompare"
@@ -139,6 +207,7 @@ import {
   Clock,
   RefreshRight,
   Loading,
+  Star,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import SearchPanel from '@/components/SearchPanel.vue'
@@ -149,8 +218,8 @@ import PriceScatter from '@/components/PriceScatter.vue'
 import HouseTable from '@/components/HouseTable.vue'
 import HistoryPanel from '@/components/HistoryPanel.vue'
 import CompareChart from '@/components/CompareChart.vue'
-import { analyzeProject, compareProjects, clearCache } from '@/api'
-import type { AnalyzeRequest, AnalyzeResponse, CompareResponse } from '@/types'
+import { analyzeProject, compareProjects, clearCache, buildExportCSVUrl, addFavorite, getFavorites, deleteFavorite, updateFavorite } from '@/api'
+import type { AnalyzeRequest, AnalyzeResponse, CompareResponse, FavoriteItem } from '@/types'
 
 const result = ref<AnalyzeResponse | null>(null)
 const analyzing = ref(false)
@@ -158,6 +227,8 @@ const lastUpdated = ref('')
 const currentReq = ref<AnalyzeRequest | null>(null)
 const showHistory = ref(false)
 const cacheClearing = ref(false)
+const showFavorites = ref(false)
+const favorites = ref<FavoriteItem[]>([])
 
 // 对比相关
 const compareList = ref<AnalyzeRequest[]>([])
@@ -228,6 +299,49 @@ async function onClearCache() {
   } finally {
     cacheClearing.value = false
   }
+}
+
+function onExportCSV() {
+  if (!currentReq.value) return
+  window.open(buildExportCSVUrl(currentReq.value), '_blank')
+}
+
+async function onAddFavorite() {
+  if (!result.value || !currentReq.value) return
+  await addFavorite({
+    projectName: result.value.params.projectName,
+    buildingName: currentReq.value.buildingName,
+    houseType: currentReq.value.houseType,
+    zone: currentReq.value.zone,
+  })
+  ElMessage.success('已加入收藏')
+}
+
+async function onViewFavorites() {
+  favorites.value = await getFavorites()
+  showFavorites.value = true
+}
+
+async function onDeleteFavorite(id?: string) {
+  if (!id) return
+  await deleteFavorite(id)
+  favorites.value = await getFavorites()
+  ElMessage.success('已删除收藏')
+}
+
+async function onTogglePush(row: FavoriteItem) {
+  if (!row.id) return
+  await updateFavorite(row.id, { enablePush: row.enablePush })
+  ElMessage.success(`已${row.enablePush ? '开启' : '关闭'}推送`)
+}
+
+async function onUpdateFavorite(row: FavoriteItem) {
+  if (!row.id) return
+  await updateFavorite(row.id, { 
+    priceAlert: row.priceAlert, 
+    saleAlert: row.saleAlert 
+  })
+  ElMessage.success('推送设置已更新')
 }
 </script>
 

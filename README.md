@@ -9,6 +9,7 @@
 ## 项目特性
 
 - 支持 **楼盘关键字搜索**
+- 支持 **区域筛选**（福田、罗湖、南山、宝安等）
 - 支持 **楼栋联动选择**
 - 支持 **户型筛选**
 - 支持 **房源价格分析**
@@ -17,6 +18,10 @@
 - 支持 **历史趋势记录**
 - 支持 **多楼盘对比分析**
 - 支持 **后端缓存与定时刷新**
+- 支持 **房源数据 CSV 导出**
+- 支持 **收藏楼盘管理**
+- 支持 **企业微信价格/销售状态推送**
+- 支持 **Docker 容器化部署**
 
 ---
 
@@ -34,6 +39,11 @@
 │   ├── cookie.go                   # Cookie 自动获取与刷新
 │   ├── resolver.go                 # 楼盘/楼栋参数解析
 │   ├── analyzer.go                 # 数据分析逻辑
+│   ├── favorite.go                 # 收藏楼盘管理
+│   ├── export.go                   # CSV 导出功能
+│   ├── wechat_push.go              # 企业微信推送
+│   ├── push_manager.go             # 推送监控管理
+│   ├── Dockerfile                  # 后端容器化配置
 │   ├── go.mod
 │   └── .gitignore
 │
@@ -47,10 +57,12 @@
 │   │   ├── App.vue
 │   │   ├── main.ts
 │   │   └── style.css
+│   ├── Dockerfile                  # 前端容器化配置
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── .gitignore
 │
+├── docker-compose.yml              # Docker 编排配置
 ├── README.md                       # 根目录项目说明
 └── lechenginfo_fullstack_memory.md # 根目录项目记忆文件
 ```
@@ -112,6 +124,17 @@
 - 默认定时刷新默认楼盘数据
 - 可手动清除缓存
 
+### 6. 数据导出与收藏
+- 支持房源数据 CSV 导出
+- 支持收藏楼盘管理
+- 支持推送配置开关
+
+### 7. 企业微信推送
+- 支持价格变化提醒（≥3%变化）
+- 支持销售状态提醒（≥5%变化）
+- 支持新收藏楼盘通知
+- 每30分钟自动检查变化
+
 ---
 
 ## 后端 API
@@ -162,11 +185,26 @@ DELETE /api/history?id=记录ID
 POST /api/cache/clear
 ```
 
+### 收藏楼盘管理
+```http
+GET    /api/favorites                    # 获取收藏列表
+POST   /api/favorites                    # 新增收藏
+DELETE /api/favorites?id=xxx             # 删除收藏
+PUT    /api/favorites/update?id=xxx      # 更新推送配置
+```
+
+### 导出 CSV
+```http
+GET /api/export/csv?keyword=xxx&buildingName=xxx&houseType=xxx&zone=
+```
+
 ---
 
 ## 启动方式
 
-## 1. 启动后端
+### 方式一：传统启动（开发环境）
+
+#### 1. 启动后端
 
 ```powershell
 cd backend
@@ -197,6 +235,25 @@ http://127.0.0.1:5173
 
 如果端口被占用，Vite 会自动切换到其它端口，比如 `5174`。
 
+### 方式二：Docker 容器化启动
+
+#### 1. 构建并启动所有服务
+
+```bash
+docker-compose up --build
+```
+
+#### 2. 访问服务
+
+- 前端访问：`http://localhost:8081`
+- 后端 API：`http://localhost:8080`
+
+#### 3. 停止服务
+
+```bash
+docker-compose down
+```
+
 ---
 
 ## 默认演示配置
@@ -222,14 +279,16 @@ backend/config.go
 - 每 30 分钟自动刷新 Cookie
 - 如果自动获取失败，则降级使用静态 Cookie
 
-### 历史文件
-历史分析记录默认保存在：
+### 数据文件
+运行时数据文件默认保存在：
 
 ```text
-backend/history.json
+backend/history.json          # 历史分析记录
+backend/favorites.json        # 收藏楼盘数据
+backend/push_records.json     # 推送记录
 ```
 
-该文件建议加入 `.gitignore`，避免把运行时数据提交到 GitHub。
+这些文件建议加入 `.gitignore`，避免把运行时数据提交到 GitHub。
 
 ### Windows 环境说明
 你当前是 Windows 环境，建议使用 PowerShell 启动：
@@ -244,17 +303,32 @@ cd frontend
 npm run dev
 ```
 
+### Docker 环境说明
+Docker 部署支持跨平台运行，Windows 环境下需要安装 Docker Desktop。
+
 ---
 
-## 后续可扩展方向
+## 企业微信推送配置
 
-- 支持区域筛选
-- 支持更多户型维度分析
-- 支持收藏楼盘
-- 支持导出 Excel / CSV
-- 支持房源价格变化预警
-- 支持登录后保存个人分析记录
-- 支持部署到云服务器
+### 1. 配置推送
+1. 在收藏夹中启用推送开关
+2. 配置价格变化提醒（≥3%）
+3. 配置销售状态提醒（≥5%）
+
+### 2. 推送内容
+- **价格变化提醒**：中位单价变化超过3%
+- **销售状态提醒**：在售率变化超过5%
+- **新收藏通知**：新增收藏楼盘信息
+
+### 3. 推送频率
+- 每30分钟自动检查一次
+- 只推送显著变化，避免频繁打扰
+
+### 4. Webhook 配置
+推送使用企业微信机器人 Webhook：
+```
+https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=f5e8ee74-efbd-4e02-9011-20ab8decb475
+```
 
 ---
 
@@ -265,13 +339,26 @@ npm run dev
 - 购房数据辅助分析
 - 销售进度趋势跟踪
 - 房产信息可视化展示
+- 价格变化实时监控
+- 投资决策数据支持
 
 ---
 
-如果你后面还要继续扩展，我建议下一步可以继续做：
+## 🎯 项目进展
 
-1. 登录页与用户体系
-2. 导出报表
-3. 收藏楼盘与订阅提醒
-4. Docker 部署
-5. Nginx 反向代理上线
+✅ **已完成功能**：
+- 基础楼盘搜索与分析
+- 区域筛选支持  
+- CSV 数据导出
+- 收藏楼盘管理
+- 企业微信推送
+- Docker 容器化部署
+- 价格/销售变化预警
+
+🚀 **下一步可扩展方向**：
+- 登录页与用户体系
+- 导出 Excel 格式报表
+- 移动端适配
+- 云服务器部署
+- Nginx 反向代理配置
+- 更多数据源集成

@@ -1,5 +1,5 @@
 # OS files
-.DS_Store
+.DS_Store 
 Thumbs.db
 
 # IDE files
@@ -24,6 +24,7 @@ Thumbs.db
 /backend/coverage.out
 /backend/*.coverprofile
 /backend/history.json
+/backend/favorites.json
 /backend/.env
 /backend/.env.*
 !/backend/.env.example

@@ -70,28 +70,28 @@ type HouseInfoRequest struct {
 
 // AnalysisResult 房源数据量化分析结果
 type AnalysisResult struct {
-	MinUnitPrice         float64 `json:"min_unit_price"`
-	MaxUnitPrice         float64 `json:"max_unit_price"`
-	MedianUnitPrice      float64 `json:"median_unit_price"`
-	MinRecordedUnitPrice float64 `json:"min_recorded_unit_price"`
-	MaxRecordedUnitPrice float64 `json:"max_recorded_unit_price"`
-	MinTotalPrice        float64 `json:"min_total_price"`
-	MaxTotalPrice        float64 `json:"max_total_price"`
-	AvgTotalPrice        float64 `json:"avg_total_price"`
-	TotalPriceSpan       float64 `json:"total_price_span"`
-	BuildingArea         float64 `json:"building_area"`
-	ExpandArea           float64 `json:"expand_area"`
-	InsideArea           float64 `json:"inside_area"`
-	ActualUseArea        float64 `json:"actual_use_area"`
-	HousingRate          float64 `json:"housing_rate"`
-	TotalCount           int     `json:"total_count"`
-	MinFloor             int     `json:"min_floor"`
-	MaxFloor             int     `json:"max_floor"`
-	LowFloorCount        int     `json:"low_floor_count"`
-	MidFloorCount        int     `json:"mid_floor_count"`
-	HighFloorCount       int     `json:"high_floor_count"`
-	MaxPerFloor          int     `json:"max_per_floor"`
-	MinPerFloor          int     `json:"min_per_floor"`
+	MinUnitPrice           float64 `json:"min_unit_price"`
+	MaxUnitPrice           float64 `json:"max_unit_price"`
+	MedianUnitPrice        float64 `json:"median_unit_price"`
+	MinRecordedUnitPrice   float64 `json:"min_recorded_unit_price"`
+	MaxRecordedUnitPrice   float64 `json:"max_recorded_unit_price"`
+	MinTotalPrice          float64 `json:"min_total_price"`
+	MaxTotalPrice          float64 `json:"max_total_price"`
+	AvgTotalPrice          float64 `json:"avg_total_price"`
+	TotalPriceSpan         float64 `json:"total_price_span"`
+	BuildingArea           float64 `json:"building_area"`
+	ExpandArea             float64 `json:"expand_area"`
+	InsideArea             float64 `json:"inside_area"`
+	ActualUseArea          float64 `json:"actual_use_area"`
+	HousingRate            float64 `json:"housing_rate"`
+	TotalCount             int     `json:"total_count"`
+	MinFloor               int     `json:"min_floor"`
+	MaxFloor               int     `json:"max_floor"`
+	LowFloorCount          int     `json:"low_floor_count"`
+	MidFloorCount          int     `json:"mid_floor_count"`
+	HighFloorCount         int     `json:"high_floor_count"`
+	MaxPerFloor            int     `json:"max_per_floor"`
+	MinPerFloor            int     `json:"min_per_floor"`
 	UnitPricePerExpandArea float64 `json:"unit_price_per_expand_area"`
 	CostPerActualArea      float64 `json:"cost_per_actual_area"`
 	FloorPricePremium      float64 `json:"floor_price_premium"`
@@ -167,9 +167,19 @@ type AnalyzeRequest struct {
 	Keyword      string `json:"keyword"`
 	BuildingName string `json:"buildingName"`
 	HouseType    string `json:"houseType"`
+	Zone         string `json:"zone"`
 	YsProjectId  int    `json:"ysProjectId"`
 	PreSellId    int    `json:"preSellId"`
 	FybId        int    `json:"fybId"`
+}
+
+// PriceAlert 价格/销售变化预警
+type PriceAlert struct {
+	Level     string  `json:"level"`     // info / warning / danger / success
+	Title     string  `json:"title"`     // 预警标题
+	Message   string  `json:"message"`   // 预警内容
+	Direction string  `json:"direction"` // up / down / flat
+	ChangePct float64 `json:"changePct"` // 变化百分比
 }
 
 // AnalyzeResponse 分析结果完整响应（返回给前端）
@@ -179,6 +189,7 @@ type AnalyzeResponse struct {
 	Houses      []HouseItem           `json:"houses"`
 	FloorGroups []FloorGroup          `json:"floorGroups"`
 	Params      ResolvedProjectParams `json:"params"`
+	Alerts      []PriceAlert          `json:"alerts"`
 	UpdatedAt   string                `json:"updatedAt"`
 }
 
@@ -199,6 +210,7 @@ type HistoryRecord struct {
 	ProjectName  string         `json:"projectName"`
 	BuildingName string         `json:"buildingName"`
 	HouseType    string         `json:"houseType"`
+	Zone         string         `json:"zone"`
 	Analysis     AnalysisResult `json:"analysis"`
 	Sale         SaleSummary    `json:"sale"`
 	CreatedAt    string         `json:"createdAt"`
@@ -214,6 +226,7 @@ type CompareItem struct {
 	ProjectName  string         `json:"projectName"`
 	BuildingName string         `json:"buildingName"`
 	HouseType    string         `json:"houseType"`
+	Zone         string         `json:"zone"`
 	Analysis     AnalysisResult `json:"analysis"`
 	Sale         SaleSummary    `json:"sale"`
 }
@@ -222,4 +235,27 @@ type CompareItem struct {
 type CompareResponse struct {
 	Items     []CompareItem `json:"items"`
 	UpdatedAt string        `json:"updatedAt"`
+}
+
+// FavoriteItem 收藏楼盘
+type FavoriteItem struct {
+	ID           string `json:"id"`
+	ProjectName  string `json:"projectName"`
+	BuildingName string `json:"buildingName"`
+	HouseType    string `json:"houseType"`
+	Zone         string `json:"zone"`
+	EnablePush   bool   `json:"enablePush"`
+	PriceAlert   bool   `json:"priceAlert"`
+	SaleAlert    bool   `json:"saleAlert"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+// PushRecord 推送记录
+type PushRecord struct {
+	ID         string  `json:"id"`
+	FavoriteID string  `json:"favoriteId"`
+	Type       string  `json:"type"` // price / sale
+	ChangePct  float64 `json:"changePct"`
+	Message    string  `json:"message"`
+	PushedAt   string  `json:"pushedAt"`
 }

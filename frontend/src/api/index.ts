@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type {
+import type {  
   APIResponse,
   AnalyzeRequest,
   AnalyzeResponse,
@@ -8,6 +8,7 @@ import type {
   HistoryRecord,
   CompareRequest,
   CompareResponse,
+  FavoriteItem,
 } from '@/types'
 import { ElMessage } from 'element-plus'
 
@@ -86,6 +87,41 @@ export function deleteHistory(id: string): Promise<void> {
   return http
     .delete<APIResponse<null>>('/history', { params: { id } })
     .then(() => undefined)
+}
+
+// 获取收藏列表
+export function getFavorites(): Promise<FavoriteItem[]> {
+  return http
+    .get<APIResponse<FavoriteItem[]>>('/favorites')
+    .then((r) => r.data.data)
+}
+
+// 新增收藏
+export function addFavorite(item: FavoriteItem): Promise<void> {
+  return http.post<APIResponse<null>>('/favorites', item).then(() => undefined)
+}
+
+// 删除收藏
+export function deleteFavorite(id: string): Promise<void> {
+  return http.delete<APIResponse<null>>('/favorites', { params: { id } }).then(() => undefined)
+}
+
+// 更新收藏推送设置
+export function updateFavorite(id: string, data: { enablePush?: boolean; priceAlert?: boolean; saleAlert?: boolean }): Promise<void> {
+  return http.put<APIResponse<null>>(`/favorites/update?id=${id}`, data).then(() => undefined)
+}
+
+// 导出 CSV（直接打开下载链接）
+export function buildExportCSVUrl(req: AnalyzeRequest): string {
+  const params = new URLSearchParams()
+  if (req.keyword) params.set('keyword', req.keyword)
+  if (req.buildingName) params.set('buildingName', req.buildingName)
+  if (req.houseType) params.set('houseType', req.houseType)
+  if (req.zone) params.set('zone', req.zone)
+  if (req.ysProjectId) params.set('ysProjectId', String(req.ysProjectId))
+  if (req.preSellId) params.set('preSellId', String(req.preSellId))
+  if (req.fybId) params.set('fybId', String(req.fybId))
+  return `/api/export/csv?${params.toString()}`
 }
 
 // 清除缓存

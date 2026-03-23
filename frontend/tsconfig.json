@@ -1,5 +1,5 @@
 {
-  "compilerOptions": {
+  "compilerOptions": { 
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",
@@ -8,6 +8,10 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,

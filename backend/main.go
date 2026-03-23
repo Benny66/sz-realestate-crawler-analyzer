@@ -56,6 +56,8 @@ func main() {
 
 	// 3. 后台启动定时刷新任务
 	go scheduleAutoRefresh()
+	// 4. 启动推送监控（订阅收藏楼盘的价格/销售变化）
+	go StartPushMonitor()
 
 	// 4. 启动 HTTP Server
 	fmt.Printf("API 服务已启动: http://localhost%s\n", DefaultConfig.ServerAddr)

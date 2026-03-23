@@ -1,5 +1,5 @@
 // ---- 基础数据结构 ----
-
+  
 export interface HouseItem {
   housenb: string
   floor: string
@@ -96,9 +96,18 @@ export interface AnalyzeRequest {
   keyword: string
   buildingName: string
   houseType: string
+  zone?: string
   ysProjectId?: number
   preSellId?: number
   fybId?: number
+}
+
+export interface PriceAlert {
+  level: 'info' | 'warning' | 'danger' | 'success'
+  title: string
+  message: string
+  direction: 'up' | 'down' | 'flat'
+  changePct: number
 }
 
 export interface AnalyzeResponse {
@@ -107,6 +116,7 @@ export interface AnalyzeResponse {
   houses: HouseItem[]
   floorGroups: FloorGroup[]
   params: ResolvedProjectParams
+  alerts: PriceAlert[]
   updatedAt: string
 }
 
@@ -132,6 +142,7 @@ export interface HistoryRecord {
   projectName: string
   buildingName: string
   houseType: string
+  zone?: string
   analysis: AnalysisResult
   sale: SaleSummary
   createdAt: string
@@ -143,6 +154,7 @@ export interface CompareItem {
   projectName: string
   buildingName: string
   houseType: string
+  zone?: string
   analysis: AnalysisResult
   sale: SaleSummary
 }
@@ -154,4 +166,16 @@ export interface CompareResponse {
 
 export interface CompareRequest {
   items: AnalyzeRequest[]
+}
+
+export interface FavoriteItem {
+  id?: string
+  projectName: string
+  buildingName: string
+  houseType: string
+  zone?: string
+  enablePush?: boolean
+  priceAlert?: boolean
+  saleAlert?: boolean
+  createdAt?: string
 }
