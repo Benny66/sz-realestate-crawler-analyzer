@@ -58,27 +58,29 @@ func (s *AnalyzerService) Analyze(groups []model.FloorGroup) model.AnalysisResul
 		return result
 	}
 
-	// 价格相关计算
-	unitPrices := make([]float64, 0, len(allHouses))
-	recordedPrices := make([]float64, 0, len(allHouses))
-	totalPrices := make([]float64, 0, len(allHouses))
+	// 价格相关计算（仅统计有挂牌价的在售房源，与旧模块保持一致）
+	unitPrices := make([]float64, 0)
+	recordedPrices := make([]float64, 0)
+	totalPrices := make([]float64, 0)
+	totalPriceSum := 0.0
 
-	var totalBuildingArea, totalExpandArea, totalInsideArea float64
-
+	// 筛选有挂牌价的在售房源
+	onSaleHouses := make([]model.HouseItem, 0)
 	for _, house := range allHouses {
 		if house.AskPriceEachB > 0 {
+			onSaleHouses = append(onSaleHouses, house)
 			unitPrices = append(unitPrices, house.AskPriceEachB)
-		}
-		if house.RecordedPricePerUnitInside > 0 {
-			recordedPrices = append(recordedPrices, house.RecordedPricePerUnitInside)
-		}
-		if house.AskPriceTotalB > 0 {
 			totalPrices = append(totalPrices, house.AskPriceTotalB)
-		}
+			totalPriceSum += house.AskPriceTotalB
 
-		totalBuildingArea += house.YsbuildingArea
-		totalExpandArea += house.YsExpandArea
-		totalInsideArea += house.YsInsideArea
+			if house.RecordedPricePerUnitInside > 0 {
+				recordedPrices = append(recordedPrices, house.RecordedPricePerUnitInside)
+			}
+		}
+	}
+
+	if len(unitPrices) == 0 {
+		return result
 	}
 
 	// 排序价格数组用于计算中位数
@@ -113,18 +115,19 @@ func (s *AnalyzerService) Analyze(groups []model.FloorGroup) model.AnalysisResul
 		}
 	}
 
-	// 楼层统计
-	result.TotalCount = len(allHouses)
-	result.MinFloor, result.MaxFloor = s.calculateFloorRange(groups)
+	// 楼层统计（只统计在售房源）
+	result.TotalCount = len(onSaleHouses)
+	result.MinFloor, result.MaxFloor = s.calculateFloorRangeForOnSale(groups, onSaleHouses)
 
-	// 楼层分布统计
-	low, mid, high := s.calculateFloorDistribution(groups, result.MinFloor, result.MaxFloor)
+	// 楼层分布统计（只统计在售房源）
+	low, mid, high := s.calculateFloorDistributionForOnSale(groups, result.MinFloor, result.MaxFloor, onSaleHouses)
 	result.LowFloorCount = low
 	result.MidFloorCount = mid
 	result.HighFloorCount = high
 
-	// 每层房源数量统计
-	result.MaxPerFloor, result.MinPerFloor = s.calculateFloorDensity(floorMap)
+	// 每层房源数量统计（只统计在售房源）
+	onSaleFloorMap := s.buildOnSaleFloorMap(groups, onSaleHouses)
+	result.MaxPerFloor, result.MinPerFloor = s.calculateFloorDensity(onSaleFloorMap)
 
 	// 衍生指标
 	if result.ExpandArea > 0 {
@@ -277,6 +280,74 @@ func (s *AnalyzerService) calculateFloorDensity(floorMap map[string]int) (max, m
 	}
 
 	return maxDensity, minDensity
+}
+
+// calculateFloorRangeForOnSale 计算在售房源的楼层范围
+func (s *AnalyzerService) calculateFloorRangeForOnSale(groups []model.FloorGroup, onSaleHouses []model.HouseItem) (min, max int) {
+	minFloor, maxFloor := 100, -1
+
+	// 创建在售房源的楼层映射
+	onSaleFloorMap := make(map[int]bool)
+	for _, house := range onSaleHouses {
+		floor, err := strconv.Atoi(house.Floor)
+		if err == nil {
+			onSaleFloorMap[floor] = true
+		}
+	}
+
+	// 只统计有在售房源的楼层
+	for floor := range onSaleFloorMap {
+		if floor < minFloor {
+			minFloor = floor
+		}
+		if floor > maxFloor {
+			maxFloor = floor
+		}
+	}
+
+	if minFloor == 100 && maxFloor == -1 {
+		return 0, 0
+	}
+	return minFloor, maxFloor
+}
+
+// calculateFloorDistributionForOnSale 计算在售房源的楼层分布
+func (s *AnalyzerService) calculateFloorDistributionForOnSale(groups []model.FloorGroup, minFloor, maxFloor int, onSaleHouses []model.HouseItem) (low, mid, high int) {
+	if maxFloor <= minFloor {
+		return 0, 0, 0
+	}
+
+	// 动态楼层分布计算（更合理，适应不同高度的楼盘）
+	totalFloors := maxFloor - minFloor + 1
+	lowThreshold := minFloor + totalFloors/3
+	highThreshold := minFloor + totalFloors*2/3
+
+	// 统计在售房源的楼层分布
+	for _, house := range onSaleHouses {
+		floor, err := strconv.Atoi(house.Floor)
+		if err == nil {
+			if floor <= lowThreshold {
+				low++
+			} else if floor <= highThreshold {
+				mid++
+			} else {
+				high++
+			}
+		}
+	}
+
+	return low, mid, high
+}
+
+// buildOnSaleFloorMap 构建在售房源的楼层数量统计
+func (s *AnalyzerService) buildOnSaleFloorMap(groups []model.FloorGroup, onSaleHouses []model.HouseItem) map[string]int {
+	floorMap := make(map[string]int)
+
+	for _, house := range onSaleHouses {
+		floorMap[house.Floor]++
+	}
+
+	return floorMap
 }
 
 func (s *AnalyzerService) calculateFloorPremium(groups []model.FloorGroup) float64 {
